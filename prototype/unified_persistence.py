@@ -19,7 +19,7 @@ def _tuple(value):
 
 def encode(world):
     state = {
-        "version": VERSION, "seed": world.seed, "day": world.day,
+        "version": VERSION, "rules_version": world.RULES_VERSION, "seed": world.seed, "day": world.day,
         "sequence": world.sequence, "rng": world.rng.getstate(),
         "settlements": [[s.id, s.region, s.resources, sorted(s.residents)] for s in world.state.settlements.values()],
         "routes": [[r.origin, r.destination, r.travel_days, r.hazard, r.restriction] for r in world.borders.routes.values()],
@@ -45,6 +45,8 @@ def encode(world):
 def decode(s):
     if s.get("version") != VERSION:
         raise ValueError("Unsupported unified checkpoint version")
+    if s.get("rules_version") != UnifiedKernel.RULES_VERSION:
+        raise ValueError("Unsupported simulation rules version")
     world = UnifiedKernel(s["seed"])
     world.day = s["day"]
     world.sequence = s["sequence"]
@@ -103,6 +105,11 @@ def decode(s):
         raise ValueError("Character region does not match residence")
     if any(e.kind == "research" and e.target not in world.discovery.techniques for _,_,e in world.pending):
         raise ValueError("Pending research references unknown technique")
+    research_actors = [e.actor for _,_,e in world.pending if e.kind == "research"]
+    if len(research_actors) != len(set(research_actors)):
+        raise ValueError("Multiple pending research jobs for character")
+    if any(d.researcher_id not in ids or d.technique_id not in world.discovery.techniques for d in world.discovery.discoveries):
+        raise ValueError("Invalid discovery provenance")
     return world
 
 def save(world, path):
