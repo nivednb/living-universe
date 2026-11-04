@@ -18,7 +18,7 @@ def _tuple(value):
     return tuple(_tuple(x) for x in value) if isinstance(value, list) else value
 
 def encode(world):
-    return {
+    state = {
         "version": VERSION, "seed": world.seed, "day": world.day,
         "sequence": world.sequence, "rng": world.rng.getstate(),
         "settlements": [[s.id, s.region, s.resources, sorted(s.residents)] for s in world.state.settlements.values()],
@@ -38,6 +38,9 @@ def encode(world):
         "beliefs": {str(k):sorted(v) for k,v in world.state.beliefs.items()},
         "outcomes": world.outcomes,
     }
+    # Normalize tuple/list representations so live and restored states compare
+    # identically and JSON roundtrips do not change canonical snapshots.
+    return json.loads(json.dumps(state, sort_keys=True))
 
 def decode(s):
     if s.get("version") != VERSION:
@@ -87,10 +90,19 @@ def decode(s):
         expected = {aid for aid,location in world.locations.items() if location == sid}
         if place.residents != expected:
             raise ValueError("Inconsistent settlement residents")
-    if any(e.actor not in ids or e.day < world.day for _,_,e in world.pending):
+    if any(d != e.day or n != e.sequence or e.actor not in ids or e.day < world.day or e.kind not in ("arrival", "research") for d,n,e in world.pending):
         raise ValueError("Invalid pending event")
+    if len({n for _,n,_ in world.pending}) != len(world.pending):
+        raise ValueError("Duplicate event sequence")
     if world.pending and world.sequence <= max(n for _,n,_ in world.pending):
         raise ValueError("Invalid event sequence")
+    arrivals = {e.actor: e.target for _,_,e in world.pending if e.kind == "arrival"}
+    if arrivals != world.destinations:
+        raise ValueError("Inconsistent pending arrivals")
+    if any(world.state.settlements[place].region != world.travelers[aid].region for aid,place in world.locations.items()):
+        raise ValueError("Character region does not match residence")
+    if any(e.kind == "research" and e.target not in world.discovery.techniques for _,_,e in world.pending):
+        raise ValueError("Pending research references unknown technique")
     return world
 
 def save(world, path):
