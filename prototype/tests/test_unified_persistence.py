@@ -45,6 +45,31 @@ class UnifiedPersistenceTests(unittest.TestCase):
         self.assertEqual(w.rng.getstate(),copy.rng.getstate())
         self.assertEqual(w.history.knowledge,copy.history.knowledge)
 
+    def test_rules_version_mismatch_rejected(self):
+        state = encode(make_world())
+        state["rules_version"] = 999
+        with self.assertRaises(ValueError):
+            decode(state)
+
+    def test_discovery_provenance_survives_restore(self):
+        w = make_world()
+        w.research(1, "hybrid", 1)
+        w.advance(1)
+        if w.outcomes[-1][3]:
+            self.assertEqual(len(w.discovery.discoveries), 1)
+            self.assertEqual(w.discovery.discoveries[0].source_knowledge, ("math", "qi"))
+        restored = decode(encode(w))
+        self.assertEqual(encode(w), encode(restored))
+
+    def test_rejects_duplicate_research_jobs(self):
+        w = make_world()
+        w.research(1, "hybrid", 3)
+        state = encode(w)
+        state["pending"].append([4, state["sequence"], "research", 1, "hybrid"])
+        state["sequence"] += 1
+        with self.assertRaises(ValueError):
+            decode(state)
+
     def test_rejects_corrupt_residency(self):
         state = encode(make_world())
         state["settlements"][0][3].clear()
