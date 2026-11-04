@@ -138,18 +138,10 @@ class UnifiedKernel:
         self.history.record(Event(event_id, self.day, f"{kind}: {detail}", frozenset({actor} if witnesses is None else witnesses)))
 
     def snapshot(self):
-        return {
-            "seed": self.seed, "day": self.day, "rng": repr(self.rng.getstate()),
-            "settlements": [(p.id, p.region, sorted(p.resources.items()), sorted(p.residents)) for p in sorted(self.state.settlements.values(), key=lambda p:p.id)],
-            "travelers": [(a.id, a.region, a.supplies, a.navigation, a.clearance, sorted(a.known_routes)) for a in sorted(self.travelers.values(), key=lambda a:a.id)],
-            "researchers": [(a.id, sorted(a.knowledge), sorted(a.expertise.items())) for a in sorted(self.discovery.researchers.values(), key=lambda a:a.id)],
-            "techniques": [(t.id, sorted(t.traditions), sorted(t.prerequisites), t.difficulty) for t in sorted(self.discovery.techniques.values(), key=lambda t:t.id)],
-            "destiny": sorted(self.destiny.items()), "locations": sorted(self.locations.items()),
-            "transit": sorted(self.transit), "destinations": sorted(self.destinations.items()),
-            "pending": [(d, s, e.kind, e.actor, e.target) for d,s,e in sorted(self.pending)],
-            "events": [(e.id, e.year, e.description, sorted(e.witnesses)) for e in self.history.events.values()],
-            "outcomes": self.outcomes,
-        }
+        # Complete versioned state, including routes, beliefs, witnesses, RNG,
+        # event sequence and pending actions. Shared with checkpoint persistence.
+        from unified_persistence import encode
+        return encode(self)
 
     def digest(self):
         return hashlib.sha256(json.dumps(self.snapshot(), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
