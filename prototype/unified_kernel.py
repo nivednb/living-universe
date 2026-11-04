@@ -8,7 +8,7 @@ import heapq
 import json
 import random
 from borders import BorderWorld, Route, Traveler
-from discovery import DiscoveryWorld, Researcher, Technique
+from discovery import DiscoveryWorld, Researcher, Technique, Discovery
 from history import Event, HistoricalLedger
 from world_state import Settlement, WorldState
 
@@ -21,6 +21,8 @@ class Pending:
     target: str
 
 class UnifiedKernel:
+    RULES_VERSION = 1
+
     def __init__(self, seed=42):
         self.seed = seed
         self.day = 0
@@ -52,8 +54,10 @@ class UnifiedKernel:
         place = self.state.settlements[settlement_id]
         if traveler.region != place.region:
             raise ValueError("Region mismatch")
-        self.travelers[traveler.id] = traveler
+        if traveler.id in self.discovery.researchers or any(traveler.id in s.residents for s in self.state.settlements.values()):
+            raise ValueError("Character already registered")
         self.discovery.add_researcher(researcher)
+        self.travelers[traveler.id] = traveler
         self.locations[traveler.id] = settlement_id
         self.destiny[traveler.id] = destiny
         place.residents.add(traveler.id)
@@ -70,6 +74,11 @@ class UnifiedKernel:
         if actor in self.transit:
             raise ValueError("Already traveling")
         traveler = self.travelers[actor]
+        if actor not in self.locations:
+            raise ValueError("Traveler has no origin settlement")
+        origin = self.state.settlements[self.locations[actor]]
+        if actor not in origin.residents or traveler.region != origin.region:
+            raise ValueError("Traveler residence is inconsistent")
         destination = self.state.settlements[destination_settlement]
         result = self.borders.travel(traveler, destination.region)
         if not result.accepted:
@@ -127,6 +136,7 @@ class UnifiedKernel:
                 success = technique.prerequisites.issubset(researcher.knowledge) and roll < chance
                 if success:
                     researcher.knowledge.add(item.target)
+                    self.discovery.discoveries.append(Discovery(item.actor, item.target, tuple(sorted(technique.prerequisites))))
                 self.outcomes.append((when, item.actor, item.target, success, roll, chance))
                 self._record("discovery" if success else "research_failure", item.actor, item.target)
             else:
