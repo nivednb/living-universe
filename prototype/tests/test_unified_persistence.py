@@ -57,6 +57,28 @@ class UnifiedPersistenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             decode(state)
 
+    def test_rejects_missing_arrival_event(self):
+        w = make_world()
+        w.depart(1, "market")
+        state = encode(w)
+        state["pending"].clear()
+        with self.assertRaises(ValueError):
+            decode(state)
+
+    def test_rejects_corrupt_event_sequence(self):
+        w = make_world()
+        w.research(1, "hybrid", 3)
+        state = encode(w)
+        state["pending"][0][1] += 100
+        with self.assertRaises(ValueError):
+            decode(state)
+
+    def test_rejects_region_residence_mismatch(self):
+        state = encode(make_world())
+        state["travelers"][0][1] = "science"
+        with self.assertRaises(ValueError):
+            decode(state)
+
     def test_rejects_invalid_pending_time(self):
         w = make_world()
         w.research(1,"hybrid",3)
