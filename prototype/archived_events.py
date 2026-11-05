@@ -25,13 +25,11 @@ class ArchivedEvents(Mapping):
             yield payload["id"]
 
     def __getitem__(self, event_id):
-        # Current archive schema indexes sequence rather than event ID. An
-        # explicit scan is correct but potentially slow: add an indexed ID
-        # column before using this mapping for high-volume provenance lookups.
-        for _, day, kind, actor, payload in self.ledger.iter_events():
-            if kind != "historical_event" or actor is not None:
-                raise HistoryIntegrityError("unexpected archive record")
-            if payload["id"] == event_id:
-                return Event(event_id, day, payload["description"],
-                             frozenset(payload["witnesses"]))
-        raise KeyError(event_id)
+        record = self.ledger.get_event_by_id(event_id)
+        if record is None:
+            raise KeyError(event_id)
+        _, day, kind, actor, payload = record
+        if kind != "historical_event" or actor is not None:
+            raise HistoryIntegrityError("unexpected archive record")
+        return Event(event_id, day, payload["description"],
+                     frozenset(payload["witnesses"]))
