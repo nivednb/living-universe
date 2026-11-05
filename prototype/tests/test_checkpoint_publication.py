@@ -34,6 +34,25 @@ class PublicationTests(unittest.TestCase):
                 self.assertEqual(recover_checkpoint(ledger, checkpoint).snapshot(), world.snapshot())
                 self.assertTrue(checkpoint.exists())
 
+    def test_recovery_does_not_publish_unverified_archive(self):
+        world = make_world()
+        with tempfile.TemporaryDirectory() as folder:
+            checkpoint = Path(folder) / "world.json"
+            with SQLiteHistoryLedger(Path(folder) / "events.sqlite") as ledger:
+                export_history(world, ledger)
+                publish_checkpoint(world, ledger, checkpoint)
+                ledger.db.execute(
+                    "UPDATE checkpoint_publication SET status='prepared' WHERE id=1"
+                )
+                ledger.db.execute("UPDATE events SET payload='{}' WHERE sequence=0")
+                ledger.db.commit()
+                with self.assertRaises(HistoryIntegrityError):
+                    recover_checkpoint(ledger, checkpoint)
+                status = ledger.db.execute(
+                    "SELECT status FROM checkpoint_publication WHERE id=1"
+                ).fetchone()[0]
+                self.assertEqual(status, "prepared")
+
     def test_reject_tampered_candidate(self):
         world = make_world()
         with tempfile.TemporaryDirectory() as folder:
