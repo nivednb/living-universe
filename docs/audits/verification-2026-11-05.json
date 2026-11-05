@@ -1,0 +1,150 @@
+{
+  "date": "2026-11-05",
+  "repository": "nivednb/living-universe",
+  "default_branch": "main",
+  "default_head": "2872624c1a5b109b311704d7db4d1a1ffae7f98c",
+  "foundation_branch": "codex/stabilize-foundation",
+  "foundation_head": "a1b455006d489dd7275aff47fcbe2b498aae139d",
+  "inspected_heads": {
+    "pr3": "7bb3d8048dd3b599cd2c3831f694b4f1fc07e13e",
+    "pr4": "ef72e34545175fdc78dafa3ed49e1f52341bdb72"
+  },
+  "fix_heads": {
+    "pr3": "a8fd5f0a14517ffb458e869152025e7ddf6821c2",
+    "pr4": "523e7e1bcbf8854132ae60b44307475069291cb4"
+  },
+  "environment": {
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "runtimes": [
+      {
+        "command": "python3",
+        "python": "3.12.14",
+        "sqlite": "3.53.1"
+      },
+      {
+        "command": "python3.13",
+        "python": "3.13.5",
+        "sqlite": "3.46.1"
+      }
+    ],
+    "dependencies": "Python standard library only"
+  },
+  "test_command": "{python} -m unittest discover -s tests -v",
+  "cwd": "{checkout}/prototype",
+  "results": [
+    {
+      "checkout": "foundation",
+      "per_runtime": {
+        "discovered": 74,
+        "passed": 74,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "checkout": "pr3_original",
+      "per_runtime": {
+        "discovered": 119,
+        "passed": 114,
+        "failed": 3,
+        "skipped": 2
+      }
+    },
+    {
+      "checkout": "pr4_original",
+      "per_runtime": {
+        "discovered": 81,
+        "passed": 81,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "checkout": "pr3_fixed",
+      "per_runtime": {
+        "discovered": 141,
+        "passed": 141,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "checkout": "pr4_updated",
+      "per_runtime": {
+        "discovered": 87,
+        "passed": 83,
+        "failed": 0,
+        "skipped": 4
+      }
+    },
+    {
+      "checkout": "combined_updated",
+      "per_runtime": {
+        "discovered": 154,
+        "passed": 154,
+        "failed": 0,
+        "skipped": 0
+      }
+    }
+  ],
+  "source_fix_ci": {
+    "pr3": {
+      "run": 41990894208,
+      "jobs": [
+        {
+          "name": "test (3.12)",
+          "id": 127122604950,
+          "conclusion": "success",
+          "test_count": "Ran 141 tests in 6.829s",
+          "skips": null,
+          "passed": true
+        },
+        {
+          "name": "test (3.13)",
+          "id": 127122605432,
+          "conclusion": "success",
+          "test_count": "Ran 141 tests in 7.133s",
+          "skips": null,
+          "passed": true
+        }
+      ],
+      "sha": "a8fd5f0a14517ffb458e869152025e7ddf6821c2"
+    },
+    "pr4": {
+      "run": 41990895417,
+      "jobs": [
+        {
+          "name": "test (3.13)",
+          "id": 127122609053,
+          "conclusion": "success",
+          "test_count": "Ran 87 tests in 6.125s",
+          "skips": "OK (skipped=4)",
+          "passed": true
+        },
+        {
+          "name": "test (3.12)",
+          "id": 127122609377,
+          "conclusion": "success",
+          "test_count": "Ran 87 tests in 4.716s",
+          "skips": "OK (skipped=4)",
+          "passed": true
+        }
+      ],
+      "sha": "523e7e1bcbf8854132ae60b44307475069291cb4"
+    }
+  },
+  "simulation_rules_version": 2,
+  "checkpoint_version": 1,
+  "view_version": 1,
+  "golden_digest": "dd4d13c358216e612383655f5aee38e3acc40d94172e9a08e0990ce5baba5193",
+  "pull_requests_merged": false,
+  "combined_checkout": {
+    "description": "Local additive union on audit/combined-no-merge; not published or merged into any PR",
+    "tree": "7653227fe73661f143bd8dff410029ba53574163"
+  },
+  "unexecuted": [
+    "Physical power interruption/filesystem or disk failure testing",
+    "Windows/macOS durability testing",
+    "Combined branch GitHub CI (local Python 3.12 and 3.13 only)"
+  ]
+}

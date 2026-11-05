@@ -1,0 +1,79 @@
+{
+  "observations": [
+    {
+      "append_single_batch": {
+        "additional_python_peak_bytes": 464140,
+        "seconds": 0.080157
+      },
+      "events": 1000,
+      "first_id_lookup": {
+        "additional_python_peak_bytes": 211289,
+        "seconds": 0.071588
+      },
+      "full_live_snapshot": {
+        "additional_python_peak_bytes": 669436,
+        "seconds": 0.036271
+      },
+      "id_index_audit": {
+        "additional_python_peak_bytes": 211343,
+        "seconds": 0.075849
+      },
+      "sqlite_files_bytes": {
+        "history.sqlite": 4096,
+        "history.sqlite-shm": 32768,
+        "history.sqlite-wal": 333752
+      },
+      "stream_scan": {
+        "additional_python_peak_bytes": 211563,
+        "seconds": 0.083007
+      },
+      "warm_1000_id_lookups": {
+        "additional_python_peak_bytes": 24148,
+        "seconds": 0.095213
+      },
+      "witness_audit": {
+        "additional_python_peak_bytes": 211706,
+        "seconds": 0.146253
+      }
+    },
+    {
+      "append_single_batch": {
+        "additional_python_peak_bytes": 4702732,
+        "seconds": 0.785074
+      },
+      "events": 10000,
+      "first_id_lookup": {
+        "additional_python_peak_bytes": 211837,
+        "seconds": 0.790483
+      },
+      "full_live_snapshot": {
+        "additional_python_peak_bytes": 6055396,
+        "seconds": 0.386543
+      },
+      "id_index_audit": {
+        "additional_python_peak_bytes": 211890,
+        "seconds": 0.802109
+      },
+      "sqlite_files_bytes": {
+        "history.sqlite": 4096,
+        "history.sqlite-shm": 32768,
+        "history.sqlite-wal": 2579152
+      },
+      "stream_scan": {
+        "additional_python_peak_bytes": 212109,
+        "seconds": 0.70365
+      },
+      "warm_1000_id_lookups": {
+        "additional_python_peak_bytes": 24148,
+        "seconds": 0.105978
+      },
+      "witness_audit": {
+        "additional_python_peak_bytes": 212252,
+        "seconds": 1.479763
+      }
+    }
+  ],
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "python": "3.12.14",
+  "sqlite": "3.53.1"
+}
