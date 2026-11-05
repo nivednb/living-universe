@@ -23,6 +23,34 @@ class IndexedHistoryTests(unittest.TestCase):
             with SQLiteHistoryLedger(path) as ledger:
                 self.assertEqual(ledger.get_event_by_id("e-70")[4]["id"], "e-70")
 
+    def test_streamed_audit_detects_duplicate_payload_ids(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with SQLiteHistoryLedger(Path(directory) / "history.sqlite") as ledger:
+                ledger.append_many([
+                    (0, 0, "historical_event", None,
+                     {"id": "a", "description": "first", "witnesses": []}),
+                    (1, 1, "historical_event", None,
+                     {"id": "b", "description": "second", "witnesses": []}),
+                ])
+                self.assertEqual(ledger.check_event_id_index(), 2)
+                # Change the canonical row AND digest to mimic a validly
+                # re-encoded event whose ID index was not updated.
+                import hashlib
+                import json
+                payload = {"id": "a", "description": "second", "witnesses": []}
+                body = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+                digest = hashlib.sha256(
+                    json.dumps([1, 1, "historical_event", None, payload],
+                               sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+                ).hexdigest()
+                ledger.db.execute(
+                    "UPDATE events SET payload=?,digest=? WHERE sequence=1",
+                    (body, digest),
+                )
+                ledger.db.commit()
+                with self.assertRaises(HistoryIntegrityError):
+                    ledger.check_event_id_index()
+
     def test_wrong_index_mapping_detected_even_when_counts_match(self):
         with tempfile.TemporaryDirectory() as directory:
             with SQLiteHistoryLedger(Path(directory) / "history.sqlite") as ledger:
