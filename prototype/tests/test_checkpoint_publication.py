@@ -70,6 +70,26 @@ class PublicationTests(unittest.TestCase):
                 ).fetchone()[0]
                 self.assertEqual(status, "prepared")
 
+    def test_recovery_replaces_older_checkpoint_from_prepared_candidate(self):
+        world = make_world()
+        with tempfile.TemporaryDirectory() as folder:
+            checkpoint = Path(folder) / "world.json"
+            with SQLiteHistoryLedger(Path(folder) / "events.sqlite") as ledger:
+                export_history(world, ledger)
+                publish_checkpoint(world, ledger, checkpoint)
+                previous_bytes = checkpoint.read_bytes()
+                # Simulate crash after the next publication intent was
+                # committed, while the old public checkpoint still exists.
+                candidate = checkpoint.with_name(checkpoint.name + ".pending")
+                checkpoint.replace(candidate)
+                checkpoint.write_bytes(previous_bytes)
+                ledger.db.execute(
+                    "UPDATE checkpoint_publication SET status='prepared' WHERE id=1"
+                )
+                ledger.db.commit()
+                self.assertEqual(recover_checkpoint(ledger, checkpoint).snapshot(), world.snapshot())
+                self.assertFalse(candidate.exists())
+
     def test_reject_tampered_candidate(self):
         world = make_world()
         with tempfile.TemporaryDirectory() as folder:
