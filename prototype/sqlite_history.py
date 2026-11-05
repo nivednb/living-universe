@@ -98,7 +98,7 @@ class SQLiteHistoryLedger:
     def __exit__(self, *_):
         self.close()
 
-    def append_many(self, records):
+    def append_many(self, records, *, witness_rows=None):
         """Commit a batch atomically; fail the whole batch on invalid input."""
         prepared = []
         for sequence, day, kind, actor, payload in records:
@@ -134,12 +134,24 @@ class SQLiteHistoryLedger:
             raise ValueError("day must not go backwards")
         if any(a[1] > b[1] for a, b in zip(prepared, prepared[1:])):
             raise ValueError("batch days must not go backwards")
+        if witness_rows is not None:
+            witness_rows = list(witness_rows)
+            self.db.execute("""CREATE TABLE IF NOT EXISTS event_witness_memory (
+                event_id TEXT NOT NULL,
+                actor INTEGER NOT NULL CHECK(actor >= 0),
+                PRIMARY KEY(event_id, actor),
+                FOREIGN KEY(event_id) REFERENCES event_ids(event_id)
+            )""")
         with self.db:
             self.db.executemany(
                 "INSERT INTO events(sequence,day,kind,actor,payload,digest) VALUES(?,?,?,?,?,?)",
                 prepared,
             )
             self.db.executemany("INSERT INTO event_ids(event_id,sequence) VALUES(?,?)", event_ids)
+            if witness_rows is not None:
+                self.db.executemany(
+                    "INSERT INTO event_witness_memory(event_id,actor) VALUES(?,?)", witness_rows
+                )
         return len(prepared)
 
     def iter_events(self, *, from_sequence=0, to_sequence=None, actor=None,
