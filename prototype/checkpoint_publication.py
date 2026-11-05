@@ -11,7 +11,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import tempfile
 
 from history_archive import verify_history
 from sqlite_history import HistoryIntegrityError
@@ -97,10 +96,11 @@ def recover_checkpoint(ledger, path):
             _sync_directory(destination.parent)
         else:
             raise HistoryIntegrityError("checkpoint candidate missing or modified")
-        with ledger.db:
-            ledger.db.execute("UPDATE checkpoint_publication SET status='published' WHERE id=1")
     if not destination.exists() or _digest(destination) != digest:
         raise HistoryIntegrityError("published checkpoint digest mismatch")
     world = load(destination)
     verify_history(world, ledger)
+    if status == "prepared":
+        with ledger.db:
+            ledger.db.execute("UPDATE checkpoint_publication SET status='published' WHERE id=1")
     return world
