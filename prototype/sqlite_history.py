@@ -44,6 +44,10 @@ class SQLiteHistoryLedger:
             );
             CREATE INDEX IF NOT EXISTS events_by_day ON events(day, sequence);
             CREATE INDEX IF NOT EXISTS events_by_actor ON events(actor, sequence);
+            CREATE TABLE IF NOT EXISTS event_ids (
+                event_id TEXT PRIMARY KEY,
+                sequence INTEGER NOT NULL UNIQUE REFERENCES events(sequence)
+            );
         """)
 
     def close(self):
@@ -72,6 +76,14 @@ class SQLiteHistoryLedger:
             prepared.append((sequence, day, kind, actor, body, digest))
         if not prepared:
             return 0
+        event_ids = []
+        for row in prepared:
+            if row[2] == "historical_event":
+                payload = json.loads(row[4])
+                event_id = payload.get("id") if isinstance(payload, dict) else None
+                if not isinstance(event_id, str) or not event_id:
+                    raise ValueError("historical event must have a nonempty string id")
+                event_ids.append((event_id, row[0]))
         if any(a[0] >= b[0] for a, b in zip(prepared, prepared[1:])):
             raise ValueError("batch sequences must strictly increase")
         last = self.db.execute("SELECT MAX(sequence), MAX(day) FROM events").fetchone()
@@ -88,6 +100,7 @@ class SQLiteHistoryLedger:
                 "INSERT INTO events(sequence,day,kind,actor,payload,digest) VALUES(?,?,?,?,?,?)",
                 prepared,
             )
+            self.db.executemany("INSERT INTO event_ids(event_id,sequence) VALUES(?,?)", event_ids)
         return len(prepared)
 
     def iter_events(self, *, from_sequence=0, to_sequence=None, actor=None,
@@ -111,6 +124,19 @@ class SQLiteHistoryLedger:
                 if digest != expected or body != _canonical(payload):
                     raise HistoryIntegrityError(f"corrupt event at sequence {sequence}")
                 yield sequence, day, kind, event_actor, payload
+
+    def get_event_by_id(self, event_id):
+        """Indexed historical event lookup, returning verified canonical record."""
+        if not isinstance(event_id, str):
+            raise TypeError("event_id must be a string")
+        row = self.db.execute("SELECT sequence FROM event_ids WHERE event_id=?", (event_id,)).fetchone()
+        if row is None:
+            return None
+        records = self.iter_events(from_sequence=row[0], to_sequence=row[0])
+        record = next(records, None)
+        if record is None or record[2] != "historical_event" or record[4].get("id") != event_id:
+            raise HistoryIntegrityError("historical event ID index mismatch")
+        return record
 
     def cursor(self):
         row = self.db.execute("SELECT MAX(sequence), COUNT(*) FROM events").fetchone()
