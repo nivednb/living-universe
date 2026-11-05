@@ -43,7 +43,8 @@ def verify_witness_memory(ledger):
     """Stream and compare persisted witness rows to canonical event payloads."""
     db = ledger.db
     cursor = db.execute(
-        "SELECT event_id,actor FROM event_witness_memory ORDER BY event_id,actor"
+        "SELECT w.event_id,w.actor FROM event_witness_memory w "
+        "JOIN event_ids i ON i.event_id=w.event_id ORDER BY i.sequence,w.actor"
     )
     count = 0
     for _, _, kind, _, payload in ledger.iter_events():
