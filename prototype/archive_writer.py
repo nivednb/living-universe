@@ -37,7 +37,7 @@ class ArchivedEventWriter:
         )])
         return event.id
 
-    def record_kernel(self, day, kind, actor, detail, witnesses=()):
+    def record_kernel(self, day, kind, actor, detail, witnesses=None):
         """Allocate the next deterministic ID without an in-memory event map."""
         if type(day) is not int or day < 0:
             raise ValueError("invalid simulation day")
@@ -45,6 +45,8 @@ class ArchivedEventWriter:
             raise ValueError("invalid actor")
         if not isinstance(kind, str) or not kind or not isinstance(detail, str):
             raise ValueError("invalid event kind or detail")
+        if witnesses is None:
+            witnesses = (actor,)
         if any(type(witness) is not int or witness < 0 for witness in witnesses):
             raise ValueError("invalid witness")
         last, count = self.ledger.cursor()
