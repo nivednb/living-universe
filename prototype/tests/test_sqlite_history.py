@@ -37,8 +37,9 @@ class SQLiteLedgerTests(unittest.TestCase):
 
     def test_batch_rollback(self):
         with SQLiteHistoryLedger(self.path) as ledger:
+            ledger.db.execute("CREATE TRIGGER fail_second BEFORE INSERT ON events WHEN NEW.sequence = 2 BEGIN SELECT RAISE(ABORT, 'simulated failure'); END")
             with self.assertRaises(sqlite3.IntegrityError):
-                ledger.append_many([(1, 1, "a", None, {}), (1, 1, "b", None, {})])
+                ledger.append_many([(1, 1, "a", None, {}), (2, 1, "b", None, {})])
             self.assertEqual(ledger.cursor(), (None, 0))
 
     def test_reject_invalid_and_corruption(self):
