@@ -142,10 +142,18 @@ class SQLiteHistoryLedger:
                     raise HistoryIntegrityError(f"corrupt event at sequence {sequence}")
                 yield sequence, day, kind, event_actor, payload
 
+    def check_event_id_index(self):
+        """Fail closed if a legacy or incomplete historical ID index is present."""
+        expected = self.db.execute("SELECT COUNT(*) FROM events WHERE kind = ?", ("historical_event",)).fetchone()[0]
+        indexed = self.db.execute("SELECT COUNT(*) FROM event_ids").fetchone()[0]
+        if expected != indexed:
+            raise HistoryIntegrityError("historical ID index incomplete; call rebuild_event_id_index()")
+
     def get_event_by_id(self, event_id):
         """Indexed historical event lookup, returning verified canonical record."""
         if not isinstance(event_id, str):
             raise TypeError("event_id must be a string")
+        self.check_event_id_index()
         row = self.db.execute("SELECT sequence FROM event_ids WHERE event_id=?", (event_id,)).fetchone()
         if row is None:
             return None
