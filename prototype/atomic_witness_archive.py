@@ -17,25 +17,16 @@ def append_event_with_witnesses(ledger, event):
     if any(type(actor) is not int or actor < 0 or actor >= 2**63
            for actor in event.witnesses):
         raise ValueError("invalid witness ID")
-    db = ledger.db
-    db.execute("""CREATE TABLE IF NOT EXISTS event_witness_memory (
-        event_id TEXT NOT NULL,
-        actor INTEGER NOT NULL CHECK(actor >= 0),
-        PRIMARY KEY(event_id, actor),
-        FOREIGN KEY(event_id) REFERENCES event_ids(event_id)
-    )""")
     last, count = ledger.cursor()
     if last is not None and last != count - 1:
         raise HistoryIntegrityError("noncontiguous event sequence")
-    with db:
-        ledger.append_many([(count, event.year, "historical_event", None,
-                             {"id": event.id, "year": event.year,
-                              "description": event.description,
-                              "witnesses": sorted(event.witnesses)})])
-        db.executemany(
-            "INSERT INTO event_witness_memory(event_id,actor) VALUES(?,?)",
-            ((event.id, actor) for actor in sorted(event.witnesses))
-        )
+    ledger.append_many(
+        [(count, event.year, "historical_event", None,
+          {"id": event.id, "year": event.year,
+           "description": event.description,
+           "witnesses": sorted(event.witnesses)})],
+        witness_rows=[(event.id, actor) for actor in sorted(event.witnesses)],
+    )
     return count
 
 
