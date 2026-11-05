@@ -50,6 +50,23 @@ class SQLiteHistoryLedger:
             );
         """)
 
+    def rebuild_event_id_index(self):
+        """Verify and index historical rows from pre-index SQLite archives.
+
+        Explicit migration: never silently trust a partially populated index.
+        """
+        expected = []
+        for sequence, _, kind, _, payload in self.iter_events():
+            if kind == "historical_event":
+                event_id = payload.get("id") if isinstance(payload, dict) else None
+                if not isinstance(event_id, str) or not event_id:
+                    raise HistoryIntegrityError("invalid historical event ID")
+                expected.append((event_id, sequence))
+        with self.db:
+            self.db.execute("DELETE FROM event_ids")
+            self.db.executemany("INSERT INTO event_ids(event_id,sequence) VALUES(?,?)", expected)
+        return len(expected)
+
     def close(self):
         self.db.close()
 
