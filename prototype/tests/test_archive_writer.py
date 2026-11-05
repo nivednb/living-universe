@@ -49,6 +49,16 @@ class ArchiveWriterTests(unittest.TestCase):
                     writer.record_kernel(0, "arrival", 7, "Village", (-1,))
                 self.assertEqual(ledger.cursor(), (None, 0))
 
+    def test_default_witness_matches_kernel(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
+                writer = ArchivedEventWriter(ledger)
+                event = writer.record_kernel(0, "arrival", 7, "Village")
+                self.assertEqual(event.witnesses, frozenset({7}))
+                self.assertEqual(writer.events[event.id].witnesses, frozenset({7}))
+                explicit = writer.record_kernel(1, "arrival", 7, "Elsewhere", ())
+                self.assertEqual(explicit.witnesses, frozenset())
+
     def test_reject_negative_live_day(self):
         with tempfile.TemporaryDirectory() as folder:
             with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
