@@ -38,8 +38,9 @@ class ArchiveWriterTests(unittest.TestCase):
             with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
                 writer = ArchivedEventWriter(ledger, reserved_claim_ids={"kernel-0"})
                 with self.assertRaises(ValueError):
-                    writer.record_kernel(0, "arrival", 7, "Village", (7,))
+                    writer.record(Event("kernel-0", 0, "Explicit reserved ID", frozenset({7})))
                 self.assertEqual(ledger.cursor(), (None, 0))
+                self.assertEqual(writer.record_kernel(0, "arrival", 7, "Village", (7,)).id, "kernel-1")
 
     def test_invalid_witness_does_not_write(self):
         with tempfile.TemporaryDirectory() as folder:

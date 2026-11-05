@@ -46,6 +46,8 @@ def _init(ledger):
 
 def publish_checkpoint(world, ledger, path):
     """Publish only a checkpoint whose history equals the committed archive."""
+    if ledger.db.in_transaction:
+        raise HistoryIntegrityError("checkpoint publication requires a committed archive")
     verify_history(world, ledger)
     destination = Path(path).resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -82,6 +84,8 @@ def publish_checkpoint(world, ledger, path):
 
 def recover_checkpoint(ledger, path):
     """Finish an interrupted publication without guessing or losing history."""
+    if ledger.db.in_transaction:
+        raise HistoryIntegrityError("checkpoint recovery requires a committed archive")
     destination = Path(path).resolve()
     _init(ledger)
     row = ledger.db.execute(
@@ -93,19 +97,31 @@ def recover_checkpoint(ledger, path):
     if stored_destination != str(destination):
         raise HistoryIntegrityError("checkpoint destination mismatch")
     candidate = Path(candidate_name)
+    source = destination
     if status == "prepared":
-        if destination.exists() and _digest(destination) == digest:
+        # Prefer a recognized candidate, including when an identical older
+        # checkpoint already exists. Otherwise it would remain and block the
+        # next publication despite this recovery reporting success.
+        if candidate.exists() and _digest(candidate) == digest:
+            source = candidate
+        elif destination.exists() and _digest(destination) == digest:
             pass
-        elif candidate.exists() and _digest(candidate) == digest:
-            candidate.replace(destination)
-            _sync_directory(destination.parent)
         else:
             raise HistoryIntegrityError("checkpoint candidate missing or modified")
-    if not destination.exists() or _digest(destination) != digest:
+    if not source.exists() or _digest(source) != digest:
         raise HistoryIntegrityError("published checkpoint digest mismatch")
-    world = load(destination)
+    # Validate the candidate and *all* archive indexes before replacing an older
+    # public checkpoint. Failed recovery must preserve both evidence files.
+    world = load(source)
     verify_history(world, ledger)
     if status == "prepared":
+        if source == candidate:
+            candidate.replace(destination)
+        # A previous crash may have occurred after rename but before directory
+        # fsync. Repeat it even when the destination already has matching bytes.
+        _sync_directory(destination.parent)
+        if _digest(destination) != digest:
+            raise HistoryIntegrityError("published checkpoint digest mismatch")
         with ledger.db:
             ledger.db.execute("UPDATE checkpoint_publication SET status='published' WHERE id=1")
     return world

@@ -13,6 +13,7 @@ from unified_persistence import save
 class ArchiveRecoveryTests(unittest.TestCase):
     def test_matching_checkpoint_and_archive(self):
         world = make_world()
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
         with tempfile.TemporaryDirectory() as directory:
             checkpoint = Path(directory) / "world.json"
             save(world, checkpoint)
@@ -24,6 +25,7 @@ class ArchiveRecoveryTests(unittest.TestCase):
 
     def test_archive_ahead_of_checkpoint_rejected(self):
         world = make_world()
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
         with tempfile.TemporaryDirectory() as directory:
             checkpoint = Path(directory) / "world.json"
             save(world, checkpoint)
@@ -33,17 +35,24 @@ class ArchiveRecoveryTests(unittest.TestCase):
                 ledger.append_many([(count, world.day, "historical_event", None,
                                      {"id": "orphan", "year": world.day,
                                       "description": "uncheckpointed", "witnesses": []})])
+                before = checkpoint.read_bytes()
                 with self.assertRaises(HistoryIntegrityError):
                     load_verified_checkpoint(checkpoint, ledger)
+                self.assertEqual(ledger.cursor(), (count, count + 1))
+                self.assertEqual(checkpoint.read_bytes(), before)
 
     def test_archive_behind_checkpoint_rejected(self):
         world = make_world()
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
         with tempfile.TemporaryDirectory() as directory:
             checkpoint = Path(directory) / "world.json"
             save(world, checkpoint)
             with SQLiteHistoryLedger(Path(directory) / "history.sqlite") as ledger:
+                before = checkpoint.read_bytes()
                 with self.assertRaises(HistoryIntegrityError):
                     load_verified_checkpoint(checkpoint, ledger)
+                self.assertEqual(ledger.cursor(), (None, 0))
+                self.assertEqual(checkpoint.read_bytes(), before)
 
 
 if __name__ == "__main__":

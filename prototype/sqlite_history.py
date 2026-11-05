@@ -18,6 +18,25 @@ def _canonical(payload):
                       allow_nan=False)
 
 
+def historical_fields(payload, day):
+    """Validate signed historical years without coercing witness identities.
+
+    Older archives may omit year; their nonnegative index day is then the year.
+    This reads legacy data without rewriting it or inventing witness memories.
+    """
+    if not isinstance(payload, dict):
+        raise HistoryIntegrityError("invalid historical event payload")
+    event_id, description = payload.get("id"), payload.get("description")
+    year, witnesses = payload.get("year", day), payload.get("witnesses")
+    if (not isinstance(event_id, str) or not event_id or not isinstance(description, str)
+            or type(year) is not int or max(0, year) != day
+            or not isinstance(witnesses, list)
+            or any(type(actor) is not int or actor < 0 for actor in witnesses)
+            or witnesses != sorted(set(witnesses))):
+        raise HistoryIntegrityError("invalid historical event fields")
+    return event_id, year, description, witnesses
+
+
 class SQLiteHistoryLedger:
     """Single-writer append-only history with streaming reads.
 
@@ -100,6 +119,8 @@ class SQLiteHistoryLedger:
 
     def append_many(self, records, *, witness_rows=None):
         """Commit a batch atomically; fail the whole batch on invalid input."""
+        if self.db.in_transaction:
+            raise HistoryIntegrityError("append requires a ledger-owned transaction; commit or roll back first")
         prepared = []
         for sequence, day, kind, actor, payload in records:
             if type(sequence) is not int or sequence < 0 or sequence > 2**63 - 1:
@@ -114,14 +135,16 @@ class SQLiteHistoryLedger:
             digest = hashlib.sha256(_canonical([sequence, day, kind, actor, payload]).encode("utf-8")).hexdigest()
             prepared.append((sequence, day, kind, actor, body, digest))
         if not prepared:
+            if witness_rows is not None and list(witness_rows):
+                raise ValueError("witness rows require events in the same batch")
             return 0
         event_ids = []
         for row in prepared:
             if row[2] == "historical_event":
                 payload = json.loads(row[4])
-                event_id = payload.get("id") if isinstance(payload, dict) else None
-                if not isinstance(event_id, str) or not event_id:
-                    raise ValueError("historical event must have a nonempty string id")
+                event_id, _, _, _ = historical_fields(payload, row[1])
+                if row[3] is not None:
+                    raise ValueError("historical event actor must be None")
                 event_ids.append((event_id, row[0]))
         if any(a[0] >= b[0] for a, b in zip(prepared, prepared[1:])):
             raise ValueError("batch sequences must strictly increase")
@@ -134,8 +157,24 @@ class SQLiteHistoryLedger:
             raise ValueError("day must not go backwards")
         if any(a[1] > b[1] for a, b in zip(prepared, prepared[1:])):
             raise ValueError("batch days must not go backwards")
+        table = self.db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='event_witness_memory'"
+        ).fetchone()
+        if witness_rows is None and table and any(
+                json.loads(row[4])["witnesses"] for row in prepared if row[2] == "historical_event"):
+            raise ValueError("witness rows required for a witness-enabled archive")
         if witness_rows is not None:
             witness_rows = list(witness_rows)
+            for event_id, actor in witness_rows:
+                if (not isinstance(event_id, str) or not event_id
+                        or type(actor) is not int or not 0 <= actor < 2**63):
+                    raise ValueError("invalid witness-memory row")
+            expected = {(payload["id"], actor) for row in prepared if row[2] == "historical_event"
+                        for payload in (json.loads(row[4]),) for actor in payload["witnesses"]}
+            if len(set(witness_rows)) != len(witness_rows) or set(witness_rows) != expected:
+                raise ValueError("witness rows do not exactly match event payloads")
+            if table is None and last[0] is not None:
+                raise HistoryIntegrityError("legacy witness schema missing; explicit migration required")
             self.db.execute("""CREATE TABLE IF NOT EXISTS event_witness_memory (
                 event_id TEXT NOT NULL,
                 actor INTEGER NOT NULL CHECK(actor >= 0),
@@ -166,14 +205,29 @@ class SQLiteHistoryLedger:
                 sql += f" AND {column} {op} ?"
                 params.append(value)
         cursor = self.db.execute(sql + " ORDER BY sequence", params)
+        previous_day = None
         while rows := cursor.fetchmany(batch_size):
             for sequence, day, kind, event_actor, body, digest in rows:
-                payload = json.loads(body)
+                if (type(sequence) is not int or sequence < 0 or type(day) is not int or day < 0
+                        or not isinstance(kind, str) or not kind
+                        or (event_actor is not None and type(event_actor) is not int)
+                        or (previous_day is not None and day < previous_day)):
+                    raise HistoryIntegrityError(f"invalid event ordering or fields at sequence {sequence}")
+                previous_day = day
+                try:
+                    payload = json.loads(body)
+                    canonical = _canonical(payload)
+                except (ValueError, TypeError) as exc:
+                    raise HistoryIntegrityError(f"invalid payload at sequence {sequence}") from exc
                 expected = hashlib.sha256(
                     _canonical([sequence, day, kind, event_actor, payload]).encode("utf-8")
                 ).hexdigest()
-                if digest != expected or body != _canonical(payload):
+                if digest != expected or body != canonical:
                     raise HistoryIntegrityError(f"corrupt event at sequence {sequence}")
+                if kind == "historical_event":
+                    historical_fields(payload, day)
+                    if event_actor is not None:
+                        raise HistoryIntegrityError("unexpected historical record actor")
                 yield sequence, day, kind, event_actor, payload
 
     def check_event_id_index(self):

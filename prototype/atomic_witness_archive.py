@@ -4,7 +4,7 @@ This keeps witness rows and their event in one SQLite transaction. It does not
 make the external JSON checkpoint atomic, or migrate communicated claims.
 """
 from history import Event
-from sqlite_history import HistoryIntegrityError
+from sqlite_history import HistoryIntegrityError, historical_fields
 
 
 def append_event_with_witnesses(ledger, event):
@@ -32,6 +32,7 @@ def append_event_with_witnesses(ledger, event):
 
 def verify_witness_memory(ledger):
     """Stream and compare persisted witness rows to canonical event payloads."""
+    ledger.check_event_id_index()
     db = ledger.db
     table = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='event_witness_memory'").fetchone()
     if table is None:
@@ -44,11 +45,13 @@ def verify_witness_memory(ledger):
         "ORDER BY i.sequence IS NULL,i.sequence,w.actor"
     )
     count = 0
-    for _, _, kind, _, payload in ledger.iter_events():
+    for _, day, kind, actor, payload in ledger.iter_events():
         if kind != "historical_event":
             continue
-        event_id = payload["id"]
-        for actor in sorted(payload["witnesses"]):
+        event_id, _, _, witnesses = historical_fields(payload, day)
+        if actor is not None:
+            raise HistoryIntegrityError("unexpected historical record actor")
+        for actor in witnesses:
             actual = cursor.fetchone()
             if actual != (event_id, actor):
                 raise HistoryIntegrityError("witness-memory mismatch")

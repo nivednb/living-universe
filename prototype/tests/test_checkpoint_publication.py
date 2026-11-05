@@ -12,6 +12,7 @@ from test_unified_persistence import make_world
 class PublicationTests(unittest.TestCase):
     def test_publish_and_recover(self):
         world = make_world()
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
         with tempfile.TemporaryDirectory() as folder:
             checkpoint = Path(folder) / "world.json"
             with SQLiteHistoryLedger(Path(folder) / "events.sqlite") as ledger:
@@ -22,6 +23,7 @@ class PublicationTests(unittest.TestCase):
 
     def test_recovery_after_rename_before_final_status(self):
         world = make_world()
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
         with tempfile.TemporaryDirectory() as folder:
             checkpoint = Path(folder) / "world.json"
             with SQLiteHistoryLedger(Path(folder) / "events.sqlite") as ledger:
@@ -39,6 +41,7 @@ class PublicationTests(unittest.TestCase):
 
     def test_recover_interrupted_rename(self):
         world = make_world()
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
         with tempfile.TemporaryDirectory() as folder:
             checkpoint = Path(folder) / "world.json"
             with SQLiteHistoryLedger(Path(folder) / "events.sqlite") as ledger:
@@ -53,6 +56,7 @@ class PublicationTests(unittest.TestCase):
 
     def test_recovery_does_not_publish_unverified_archive(self):
         world = make_world()
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
         with tempfile.TemporaryDirectory() as folder:
             checkpoint = Path(folder) / "world.json"
             with SQLiteHistoryLedger(Path(folder) / "events.sqlite") as ledger:
@@ -72,6 +76,7 @@ class PublicationTests(unittest.TestCase):
 
     def test_recovery_replaces_older_checkpoint_from_prepared_candidate(self):
         world = make_world()
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
         with tempfile.TemporaryDirectory() as folder:
             checkpoint = Path(folder) / "world.json"
             with SQLiteHistoryLedger(Path(folder) / "events.sqlite") as ledger:
@@ -91,6 +96,7 @@ class PublicationTests(unittest.TestCase):
 
     def test_unrecorded_candidate_blocks_publication(self):
         world = make_world()
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
         with tempfile.TemporaryDirectory() as folder:
             checkpoint = Path(folder) / "world.json"
             candidate = checkpoint.with_name(checkpoint.name + ".pending")
@@ -104,6 +110,7 @@ class PublicationTests(unittest.TestCase):
 
     def test_reject_tampered_candidate(self):
         world = make_world()
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
         with tempfile.TemporaryDirectory() as folder:
             checkpoint = Path(folder) / "world.json"
             with SQLiteHistoryLedger(Path(folder) / "events.sqlite") as ledger:

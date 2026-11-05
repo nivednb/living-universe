@@ -6,7 +6,7 @@ still require a separate migration before the live dictionary can be removed.
 """
 from collections.abc import Mapping
 from history import Event
-from sqlite_history import HistoryIntegrityError
+from sqlite_history import HistoryIntegrityError, historical_fields
 
 
 class ArchivedEvents(Mapping):
@@ -31,5 +31,5 @@ class ArchivedEvents(Mapping):
         _, day, kind, actor, payload = record
         if kind != "historical_event" or actor is not None:
             raise HistoryIntegrityError("unexpected archive record")
-        return Event(event_id, payload.get("year", day), payload["description"],
-                     frozenset(payload["witnesses"]))
+        stored_id, year, description, witnesses = historical_fields(payload, day)
+        return Event(stored_id, year, description, frozenset(witnesses))

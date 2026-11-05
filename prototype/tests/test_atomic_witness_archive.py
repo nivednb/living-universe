@@ -1,6 +1,7 @@
 """Atomic event/witness storage regression tests."""
 import tempfile
 import unittest
+import sqlite3
 from pathlib import Path
 
 from atomic_witness_archive import append_event_with_witnesses, verify_witness_memory
@@ -32,14 +33,17 @@ class AtomicWitnessArchiveTests(unittest.TestCase):
     def test_witness_insert_failure_rolls_back_event_and_index(self):
         with tempfile.TemporaryDirectory() as folder:
             with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
-                record = (0, 0, "historical_event", None,
-                          {"id": "rollback", "year": 0,
-                           "description": "Test", "witnesses": [1]})
-                with self.assertRaises(Exception):
+                append_event_with_witnesses(ledger, Event("base", 0, "Base"))
+                ledger.db.execute("""CREATE TRIGGER injected BEFORE INSERT ON event_witness_memory
+                    WHEN NEW.actor=2 BEGIN SELECT RAISE(ABORT,'injected'); END""")
+                record = (1, 1, "historical_event", None,
+                          {"id": "rollback", "year": 1,
+                           "description": "Test", "witnesses": [1, 2]})
+                with self.assertRaises(sqlite3.IntegrityError):
                     ledger.append_many([record], witness_rows=[
-                        ("rollback", 1), ("rollback", 1)
+                        ("rollback", 1), ("rollback", 2)
                     ])
-                self.assertEqual(ledger.cursor(), (None, 0))
+                self.assertEqual(ledger.cursor(), (0, 1))
                 self.assertIsNone(ledger.get_event_by_id("rollback"))
                 self.assertEqual(ledger.db.execute(
                     "SELECT COUNT(*) FROM event_witness_memory"

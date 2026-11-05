@@ -12,6 +12,7 @@ from test_unified_persistence import make_world
 class ArchiveInvariantTests(unittest.TestCase):
     def test_valid_world_archive(self):
         world = make_world()
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
         with tempfile.TemporaryDirectory() as folder:
             with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
                 export_history(world, ledger)
@@ -22,13 +23,12 @@ class ArchiveInvariantTests(unittest.TestCase):
 
     def test_unwitnessed_direct_memory_rejected(self):
         world = make_world()
-        if not world.history.events or not world.travelers:
-            self.skipTest("fixture has no historical events or travelers")
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
+        self.assertTrue(world.history.events)
         event = next(iter(world.history.events.values()))
         nonwitness = next((actor for actor in world.travelers
                            if actor not in event.witnesses), None)
-        if nonwitness is None:
-            self.skipTest("fixture has no nonwitness actor")
+        self.assertIsNotNone(nonwitness)
         world.history.knowledge.setdefault(nonwitness, set()).add(event.id)
         with tempfile.TemporaryDirectory() as folder:
             with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
@@ -38,8 +38,8 @@ class ArchiveInvariantTests(unittest.TestCase):
 
     def test_missing_archive_event_rejected(self):
         world = make_world()
-        if not world.history.events:
-            self.skipTest("fixture has no historical events")
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
+        self.assertTrue(world.history.events)
         with tempfile.TemporaryDirectory() as folder:
             with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
                 with self.assertRaises(HistoryIntegrityError):

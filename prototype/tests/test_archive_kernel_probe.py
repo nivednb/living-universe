@@ -12,6 +12,7 @@ from test_unified_persistence import make_world
 class ArchivedKernelProbeTests(unittest.TestCase):
     def test_snapshot_and_validation_with_archived_mapping(self):
         world = make_world()
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
         original = world.history.events
         before = world.snapshot()
         with tempfile.TemporaryDirectory() as folder:
@@ -23,6 +24,7 @@ class ArchivedKernelProbeTests(unittest.TestCase):
 
     def test_mismatch_restores_original_mapping(self):
         world = make_world()
+        world.research(1, "hybrid", 3)  # Populate history; empty fixtures cannot test corruption.
         original = world.history.events
         with tempfile.TemporaryDirectory() as folder:
             with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
