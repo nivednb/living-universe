@@ -9,8 +9,9 @@ from sqlite_history import HistoryIntegrityError
 
 
 class ArchivedEventWriter:
-    def __init__(self, ledger):
+    def __init__(self, ledger, reserved_claim_ids=()):
         self.ledger = ledger
+        self.reserved_claim_ids = frozenset(reserved_claim_ids)
         self.events = ArchivedEvents(ledger)
 
     def record(self, event):
@@ -18,6 +19,10 @@ class ArchivedEventWriter:
             raise TypeError("expected Event")
         if not isinstance(event.id, str) or not event.id:
             raise ValueError("invalid event ID")
+        if event.id in self.reserved_claim_ids:
+            raise ValueError("event ID conflicts with an existing claim")
+        if not isinstance(event.description, str):
+            raise ValueError("invalid event description")
         if type(event.year) is not int or event.year < 0:
             raise ValueError("live archive writer requires nonnegative simulation day")
         if any(type(actor) is not int or actor < 0 for actor in event.witnesses):
@@ -38,6 +43,10 @@ class ArchivedEventWriter:
             raise ValueError("invalid simulation day")
         if type(actor) is not int or actor < 0:
             raise ValueError("invalid actor")
+        if not isinstance(kind, str) or not kind or not isinstance(detail, str):
+            raise ValueError("invalid event kind or detail")
+        if any(type(witness) is not int or witness < 0 for witness in witnesses):
+            raise ValueError("invalid witness")
         last, count = self.ledger.cursor()
         if last is not None and last != count - 1:
             raise HistoryIntegrityError("noncontiguous archive sequence")
