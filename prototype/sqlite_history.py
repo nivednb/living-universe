@@ -49,6 +49,7 @@ class SQLiteHistoryLedger:
                 sequence INTEGER NOT NULL UNIQUE REFERENCES events(sequence)
             );
         """)
+        self.check_event_id_index()
 
     def rebuild_event_id_index(self):
         """Verify and index historical rows from pre-index SQLite archives.
@@ -65,6 +66,7 @@ class SQLiteHistoryLedger:
         with self.db:
             self.db.execute("DELETE FROM event_ids")
             self.db.executemany("INSERT INTO event_ids(event_id,sequence) VALUES(?,?)", expected)
+        self.check_event_id_index()
         return len(expected)
 
     def close(self):
@@ -153,7 +155,6 @@ class SQLiteHistoryLedger:
         """Indexed historical event lookup, returning verified canonical record."""
         if not isinstance(event_id, str):
             raise TypeError("event_id must be a string")
-        self.check_event_id_index()
         row = self.db.execute("SELECT sequence FROM event_ids WHERE event_id=?", (event_id,)).fetchone()
         if row is None:
             return None
