@@ -77,12 +77,11 @@ class PublicationTests(unittest.TestCase):
             with SQLiteHistoryLedger(Path(folder) / "events.sqlite") as ledger:
                 export_history(world, ledger)
                 publish_checkpoint(world, ledger, checkpoint)
-                previous_bytes = checkpoint.read_bytes()
                 # Simulate crash after the next publication intent was
                 # committed, while the old public checkpoint still exists.
                 candidate = checkpoint.with_name(checkpoint.name + ".pending")
                 checkpoint.replace(candidate)
-                checkpoint.write_bytes(previous_bytes)
+                checkpoint.write_bytes(b"older checkpoint bytes")
                 ledger.db.execute(
                     "UPDATE checkpoint_publication SET status='prepared' WHERE id=1"
                 )
