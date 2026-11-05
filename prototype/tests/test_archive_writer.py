@@ -33,6 +33,22 @@ class ArchiveWriterTests(unittest.TestCase):
                     writer.record(Event("same", 1, "Duplicate", frozenset({1})))
                 self.assertEqual(ledger.cursor(), (0, 1))
 
+    def test_reserved_claim_collision(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
+                writer = ArchivedEventWriter(ledger, reserved_claim_ids={"kernel-0"})
+                with self.assertRaises(ValueError):
+                    writer.record_kernel(0, "arrival", 7, "Village", (7,))
+                self.assertEqual(ledger.cursor(), (None, 0))
+
+    def test_invalid_witness_does_not_write(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
+                writer = ArchivedEventWriter(ledger)
+                with self.assertRaises(ValueError):
+                    writer.record_kernel(0, "arrival", 7, "Village", (-1,))
+                self.assertEqual(ledger.cursor(), (None, 0))
+
     def test_reject_negative_live_day(self):
         with tempfile.TemporaryDirectory() as folder:
             with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
