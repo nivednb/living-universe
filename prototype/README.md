@@ -21,6 +21,13 @@ before encoding; restores validate both JSON shape and reconstructed invariants.
 See [the stability report](../docs/architecture/foundation-stability.md) for
 verified results, compatibility policy, benchmark methodology and limitations.
 
+`views.py` provides immutable observer and character read models plus JSON wire
+messages. Reading views never advances the world. They expose the current
+region/route graph to future 2D or 3D adapters without committing to a renderer.
+Character views disclose only self state and acquired knowledge; observer access
+is privileged. See [the view contract](../docs/architecture/view-contract.md) for
+authorization requirements, spatial semantics and remaining limits.
+
 The older `sim.py`, `travel_simulation.py` and `research_simulation.py` remain
 separate reference experiments, with their own tests. Legacy `sim.py` checkpoint
 files are not interchangeable with unified checkpoints. `sim.py --agents 10000
