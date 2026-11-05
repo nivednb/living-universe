@@ -30,7 +30,8 @@ class IndexedHistoryTests(unittest.TestCase):
                                      {"id": "old", "description": "old", "witnesses": []})])
                 ledger.db.execute("DELETE FROM event_ids")
                 ledger.db.commit()
-                self.assertIsNone(ledger.get_event_by_id("old"))
+                with self.assertRaises(HistoryIntegrityError):
+                    ledger.get_event_by_id("old")
                 self.assertEqual(ledger.rebuild_event_id_index(), 1)
                 self.assertEqual(ledger.get_event_by_id("old")[0], 0)
 
