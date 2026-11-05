@@ -33,6 +33,11 @@ def append_event_with_witnesses(ledger, event):
 def verify_witness_memory(ledger):
     """Stream and compare persisted witness rows to canonical event payloads."""
     db = ledger.db
+    table = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='event_witness_memory'").fetchone()
+    if table is None:
+        if ledger.cursor()[1] == 0:
+            return 0
+        raise HistoryIntegrityError("witness-memory table missing")
     cursor = db.execute(
         "SELECT w.event_id,w.actor FROM event_witness_memory w "
         "JOIN event_ids i ON i.event_id=w.event_id ORDER BY i.sequence,w.actor"
