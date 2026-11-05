@@ -20,6 +20,23 @@ class PublicationTests(unittest.TestCase):
                 self.assertEqual(len(digest), 64)
                 self.assertEqual(recover_checkpoint(ledger, checkpoint).snapshot(), world.snapshot())
 
+    def test_recovery_after_rename_before_final_status(self):
+        world = make_world()
+        with tempfile.TemporaryDirectory() as folder:
+            checkpoint = Path(folder) / "world.json"
+            with SQLiteHistoryLedger(Path(folder) / "events.sqlite") as ledger:
+                export_history(world, ledger)
+                publish_checkpoint(world, ledger, checkpoint)
+                ledger.db.execute(
+                    "UPDATE checkpoint_publication SET status='prepared' WHERE id=1"
+                )
+                ledger.db.commit()
+                restored = recover_checkpoint(ledger, checkpoint)
+                self.assertEqual(restored.snapshot(), world.snapshot())
+                self.assertEqual(ledger.db.execute(
+                    "SELECT status FROM checkpoint_publication WHERE id=1"
+                ).fetchone()[0], "published")
+
     def test_recover_interrupted_rename(self):
         world = make_world()
         with tempfile.TemporaryDirectory() as folder:
