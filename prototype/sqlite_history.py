@@ -148,26 +148,27 @@ class SQLiteHistoryLedger:
     def check_event_id_index(self):
         """Verify every indexed ID against its canonical, digest-checked event.
 
-        This is an explicit full scan; the first ID lookup performs it once per
-        session. Do not mistake a count comparison for an integrity guarantee.
+        This is an explicit full scan with constant auxiliary Python memory;
+        SQLite enforces unique IDs and sequences. The first ID lookup performs
+        this scan once per session.
         """
         index = self.db.execute(
             "SELECT event_id,sequence FROM event_ids ORDER BY sequence"
         )
-        seen = set()
+        count = 0
         for sequence, _, kind, _, payload in self.iter_events():
             if kind != "historical_event":
                 continue
             event_id = payload.get("id") if isinstance(payload, dict) else None
-            if not isinstance(event_id, str) or not event_id or event_id in seen:
-                raise HistoryIntegrityError("invalid or duplicate historical event ID")
-            seen.add(event_id)
+            if not isinstance(event_id, str) or not event_id:
+                raise HistoryIntegrityError("invalid historical event ID")
             actual = index.fetchone()
             if actual != (event_id, sequence):
                 raise HistoryIntegrityError("historical ID index mismatch; rebuild required")
+            count += 1
         if index.fetchone() is not None:
             raise HistoryIntegrityError("historical ID index has extra entries")
-        return len(seen)
+        return count
 
     def get_event_by_id(self, event_id):
         """Indexed historical event lookup, returning verified canonical record."""
