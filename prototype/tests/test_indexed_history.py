@@ -67,6 +67,32 @@ class IndexedHistoryTests(unittest.TestCase):
                 self.assertEqual(ledger.rebuild_event_id_index(), 2)
                 self.assertEqual(ledger.get_event_by_id("a")[0], 0)
 
+    def test_batched_rebuild_and_atomic_rollback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with SQLiteHistoryLedger(Path(directory) / "history.sqlite") as ledger:
+                ledger.append_many(
+                    (i, i, "historical_event", None,
+                     {"id": f"id-{i}", "description": str(i), "witnesses": []})
+                    for i in range(7)
+                )
+                ledger.db.execute("DELETE FROM event_ids")
+                ledger.db.commit()
+                self.assertEqual(ledger.rebuild_event_id_index(batch_size=2), 7)
+                self.assertEqual(ledger.get_event_by_id("id-6")[0], 6)
+                # Corrupt an event after index creation: rebuild must fail,
+                # preserving the pre-rebuild mappings by rollback.
+                ledger.db.execute("UPDATE events SET payload='{}' WHERE sequence=3")
+                ledger.db.commit()
+                before = ledger.db.execute(
+                    "SELECT event_id,sequence FROM event_ids ORDER BY sequence"
+                ).fetchall()
+                with self.assertRaises(HistoryIntegrityError):
+                    ledger.rebuild_event_id_index(batch_size=2)
+                after = ledger.db.execute(
+                    "SELECT event_id,sequence FROM event_ids ORDER BY sequence"
+                ).fetchall()
+                self.assertEqual(after, before)
+
     def test_explicit_legacy_index_rebuild(self):
         with tempfile.TemporaryDirectory() as directory:
             with SQLiteHistoryLedger(Path(directory) / "history.sqlite") as ledger:
