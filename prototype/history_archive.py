@@ -16,8 +16,8 @@ def export_history(world, ledger):
     if ledger.cursor() != (None, 0):
         raise HistoryIntegrityError("export requires an empty history ledger")
     records = (
-        (index, event.year, "historical_event", None,
-         {"id": event.id, "description": event.description,
+        (index, max(0, event.year), "historical_event", None,
+         {"id": event.id, "year": event.year, "description": event.description,
           "witnesses": sorted(event.witnesses)})
         for index, event in enumerate(world.history.events.values())
     )
@@ -39,9 +39,9 @@ def verify_history(world, ledger):
     count = 0
     for sequence, day, kind, actor, payload in ledger.iter_events():
         event = next(expected, None)
-        if (event is None or sequence != count or day != event.year or
+        if (event is None or sequence != count or day != max(0, event.year) or
                 kind != "historical_event" or actor is not None or
-                payload != {"id": event.id, "description": event.description,
+                payload != {"id": event.id, "year": event.year, "description": event.description,
                             "witnesses": sorted(event.witnesses)}):
             raise HistoryIntegrityError(f"history mismatch at index {count}")
         count += 1
