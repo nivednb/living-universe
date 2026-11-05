@@ -70,6 +70,11 @@ def publish_checkpoint(world, ledger, path):
             (str(destination), str(candidate), digest))
     candidate.replace(destination)
     _sync_directory(destination.parent)
+    # Verify the published bytes and historical mirror before committing success.
+    if _digest(destination) != digest:
+        raise HistoryIntegrityError("published checkpoint digest mismatch")
+    published_world = load(destination)
+    verify_history(published_world, ledger)
     with ledger.db:
         ledger.db.execute("UPDATE checkpoint_publication SET status='published' WHERE id=1")
     return digest
