@@ -17,6 +17,8 @@ Separate experimental copies allow reproducible research without rewriting the s
 - [World vision](docs/world/vision.md)
 - [Mechanics and shared rules](docs/world/mechanics.md)
 - [Architecture](docs/architecture/overview.md)
+- [Verified foundation, benchmarks and limitations](docs/architecture/foundation-stability.md)
+- [Run the Python prototypes](prototype/README.md)
 - [Development roadmap](docs/roadmap.md)
 - [Decision record](docs/decisions/0001-one-persistent-universe.md)
 - [Open-source reuse research](docs/research/reuse-audit.md)

@@ -1,13 +1,34 @@
-# Reference simulation prototype (Python standard library)
+# Reference simulation prototypes (Python standard library)
 
-This is a small, tested **reference scheduler**, not the production engine or a functioning RPG. It deliberately has no rendering dependency and is designed to inform a later Rust implementation.
+These renderer-independent Python models explore deterministic scheduling and
+world invariants. They are not a playable game or a production civilization engine.
+Python 3.12+ is the supported reference environment; no pip packages are required.
 
-Run from this directory:
+From the repository root:
 ```sh
-python sim.py --agents 10000 --days 365
-python -m unittest discover -s tests
+python3 -m venv .venv
+cd prototype
+../.venv/bin/python -m unittest discover -s tests -v
+../.venv/bin/python benchmark_unified.py --agents 1000 --rounds 100
 ```
 
-Models five starting cultures, deterministic scheduled study/training/migration events, persistent identities, a basic event list and a digest. It does **not** yet implement physical fields, institutions, knowledge provenance, replay restoration, save/load, ecology, mortality, AI or 2D/3D views. The RNG representation in snapshots is diagnostic, not a stable persistence format.
+`unified_kernel.py` integrates one clock, scheduled travel/research, settlement
+residency, bounded hidden destiny, discovery provenance, teaching, historical
+witnesses and claims. `unified_persistence.py` saves and restores complete JSON
+checkpoints with schema and simulation-rule version gates. `world.validate()`
+checks consistency without consuming randomness. Saves and snapshots validate
+before encoding; restores validate both JSON shape and reconstructed invariants.
+See [the stability report](../docs/architecture/foundation-stability.md) for
+verified results, compatibility policy, benchmark methodology and limitations.
 
-Local baseline on 2026-11-04: 10,000 agents, 365 days, 232,625 events, 1.27 seconds elapsed, 141,964 KB peak resident memory (single container run). Four unit tests passed. This measures a very simple synthetic workload, **not** the target civilization simulation.
+The older `sim.py`, `travel_simulation.py` and `research_simulation.py` remain
+separate reference experiments, with their own tests. Legacy `sim.py` checkpoint
+files are not interchangeable with unified checkpoints. `sim.py --agents 10000
+--days 365` measures a different, simpler workload; do not compare it directly
+with the integrated benchmark.
+
+The prototype has no autonomous planning, ecology, institutions, mortality,
+network server, renderer or full cosmological fate model. Historical descriptions
+are strings, not a durable typed replay log. No third-party source or paid
+services were added. Source-code licensing is still unresolved in the repository;
+`LICENSE-DOCS` covers documentation only.

@@ -1,6 +1,6 @@
 """Deterministic interdisciplinary discovery and knowledge transmission.
 
-Standalone reference model. Integration into the persistent event scheduler is pending.
+Shared domain model used by unified_kernel and the standalone research experiment.
 """
 from dataclasses import dataclass, field
 
@@ -12,7 +12,7 @@ class Technique:
     difficulty: int = 0
 
     def __post_init__(self):
-        if not self.id or not self.traditions or self.difficulty < 0:
+        if not self.id or not self.traditions or type(self.difficulty) is not int or self.difficulty < 0:
             raise ValueError("Invalid technique")
 
 @dataclass

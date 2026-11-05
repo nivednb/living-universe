@@ -1,6 +1,6 @@
 """Renderer-independent structured world facts and resource transfers.
 
-This is a deterministic domain model; not yet wired into the event scheduler.
+Deterministic domain model used by the unified event scheduler.
 """
 from dataclasses import dataclass, field
 from typing import Dict, Set
@@ -17,7 +17,7 @@ class Settlement:
     def __post_init__(self):
         if self.region not in REGION_IDS:
             raise ValueError("Unknown region")
-        if any(not isinstance(v, int) or v < 0 for v in self.resources.values()):
+        if any(type(v) is not int or v < 0 for v in self.resources.values()):
             raise ValueError("Resources must be nonnegative integer quantities")
 
 @dataclass(frozen=True)
@@ -50,7 +50,7 @@ class WorldState:
         self.beliefs.setdefault(agent_id, set()).add(claim_id)
 
     def transfer(self, source_id: str, target_id: str, resource: str, amount: int):
-        if not isinstance(amount, int) or amount <= 0:
+        if type(amount) is not int or amount <= 0:
             raise ValueError("Transfer amount must be a positive integer")
         if source_id == target_id:
             raise ValueError("Source and destination must differ")

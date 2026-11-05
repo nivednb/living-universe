@@ -1,6 +1,6 @@
 """Deterministic travel decisions with imperfect route knowledge.
 
-Standalone prototype: integration with Universe event scheduling is pending.
+Shared domain model used by unified_kernel; independent of the legacy Universe.
 """
 from dataclasses import dataclass, field
 from typing import Dict, Set, Tuple
@@ -14,9 +14,10 @@ class Route:
     restriction: int = 0
 
     def __post_init__(self):
-        if self.origin == self.destination or self.travel_days <= 0:
+        if self.origin == self.destination or type(self.travel_days) is not int or self.travel_days <= 0:
             raise ValueError("Route needs distinct endpoints and positive travel time")
-        if not (0 <= self.hazard <= 100 and 0 <= self.restriction <= 100):
+        if not (type(self.hazard) is int and type(self.restriction) is int
+                and 0 <= self.hazard <= 100 and 0 <= self.restriction <= 100):
             raise ValueError("Hazard and restriction must be percentages")
 
 @dataclass

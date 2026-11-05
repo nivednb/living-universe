@@ -1,6 +1,6 @@
 """Minimal epistemic history ledger independent of the visual renderer.
 
-Research prototype: no persistence integration or automatic memory decay yet.
+Shared ledger used by unified checkpoints; automatic memory decay is not implemented.
 """
 from dataclasses import dataclass, field
 
@@ -25,14 +25,14 @@ class HistoricalLedger:
     knowledge: dict[int, set[str]] = field(default_factory=dict)
 
     def record(self, event: Event):
-        if event.id in self.events:
+        if event.id in self.events or event.id in self.claims:
             raise ValueError("Duplicate event")
         self.events[event.id] = event
         for agent_id in event.witnesses:
             self.knowledge.setdefault(agent_id, set()).add(event.id)
 
     def publish_claim(self, claim: Claim):
-        if claim.id in self.claims:
+        if claim.id in self.claims or claim.id in self.events:
             raise ValueError("Duplicate claim")
         if claim.event_id not in self.events:
             raise ValueError("Unknown referenced event")
