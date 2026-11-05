@@ -59,6 +59,20 @@ class AtomicWitnessArchiveTests(unittest.TestCase):
                 with self.assertRaises(HistoryIntegrityError):
                     verify_witness_memory(ledger)
 
+    def test_orphan_witness_row_detected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
+                append_event_with_witnesses(
+                    ledger, Event("valid", 0, "Recorded", frozenset({1}))
+                )
+                with ledger.db:
+                    ledger.db.execute(
+                        "INSERT INTO event_witness_memory(event_id,actor) VALUES(?,?)",
+                        ("nonexistent", 9),
+                    )
+                with self.assertRaises(HistoryIntegrityError):
+                    verify_witness_memory(ledger)
+
     def test_missing_witness_row_detected(self):
         with tempfile.TemporaryDirectory() as folder:
             with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
