@@ -51,6 +51,13 @@ Collections have stable order. New visual-only fields can evolve the view schema
 without changing simulation rules or checkpoint schema. Breaking contract changes
 require a new view version. This step leaves rules at 2 and checkpoint schema at 1.
 
+Frozen dataclasses are not a Python sandbox: arbitrary Python code can bypass
+assignment guards with `object.__setattr__` or `__dict__`. Such edits affect only
+the detached object. Untrusted clients should receive serialized messages, not
+Python kernel or archive handles; host authentication/authorization remains
+required. Regression tests explicitly exercise these bypasses without changing
+authoritative state.
+
 ## Space and future 3D
 
 The implemented spatial model is a region/settlement graph, with directed region
@@ -80,6 +87,14 @@ headless-versus-observed continuation, viewer selection, immutable/detached data
 knowledge isolation, rumor/evidence boundaries, missing checkpoint secrets,
 authoritative arrival timing, JSON encoding and checkpoint-roundtrip equality.
 The existing rules-v2 golden checkpoint test also remains unchanged.
+
+`test_view_archive_integration.py` runs four compatibility checks when the PR3
+archive modules are installed alongside these views. On the standalone viewer
+branch they are explicitly skipped, rather than importing an unmerged dependency.
+The combined audit checkout runs all four: archive-backed memories and rumors,
+immutable historical observation, verified checkpoint restore, view equality and
+deterministic continuation. The archive event mapping is temporarily substituted
+only in a host-controlled test scope and restored before simulation advances.
 
 Reads assume a valid kernel and must be serialized with host mutation, or operate
 on a host-owned consistent snapshot. There is no thread safety or transaction
