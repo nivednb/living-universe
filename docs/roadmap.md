@@ -10,4 +10,8 @@ These are capability milestones, not separate incompatible world prototypes.
 6. **Clients** — observer/research tools, 2D exploration, multiplayer and intervention.
 7. **Operations** — deployment, cost measurements, backups, documentation and contributions.
 
-**Current status:** documentation only. All implementation milestones remain open.
+**Current status:** a tested Python reference kernel implements scheduling,
+travel/research, historical knowledge, validated persistence and renderer-neutral
+observer/character views. Production scaling, autonomous civilizations, physical
+spatial fields and playable clients remain open. See the [view contract](architecture/view-contract.md)
+for the boundary between simulation authority and future 2D/3D presentation.

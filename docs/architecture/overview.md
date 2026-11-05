@@ -1,6 +1,16 @@
-# Architecture (proposed; not implemented)
+# Architecture
 
-## Boundaries
+## Implemented reference boundary
+
+The standard-library Python prototype now integrates a deterministic event queue,
+travel, research, knowledge, history, versioned checkpoints and validated read
+models. `prototype/views.py` exposes detached observer and character projections;
+viewers do not drive the clock or affect which world events execute. See the
+[view contract and future 3D boundary](view-contract.md) and
+[foundation verification](foundation-stability.md). This is still a reference
+implementation, not a production server or playable client.
+
+## Proposed production boundaries
 - `packages/world-rules`: versioned physical and fantasy mechanics, field interactions, validation.
 - `packages/agents`: identities, needs, goals, skills, beliefs, memories, action proposals.
 - `packages/simulation`: authoritative state transitions, scheduling, resource and environmental effects.

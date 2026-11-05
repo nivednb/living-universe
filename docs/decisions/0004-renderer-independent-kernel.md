@@ -17,4 +17,11 @@ Sources:
 - https://godotengine.org/license/
 - https://github.com/cocos/cocos-engine
 
-Next: implement event log and snapshot restoration; model historical provenance and spatial fields; benchmark a Rust implementation under matching semantics. Avoid LLM calls in per-agent simulation loops.
+Progress: the Python unified kernel now supports validated checkpoint restoration,
+historical provenance and detached observer/character views. The [view contract](../architecture/view-contract.md)
+defines the current region/route graph and the boundary for future 3D support.
+
+Next: typed causal event schemas, authoritative spatial queries and fields, and a
+Rust benchmark under matching semantics. Spatial mechanics need explicit units,
+precision and deterministic behavior before selecting renderer physics. Avoid
+LLM calls in per-agent simulation loops.
