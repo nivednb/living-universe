@@ -1,0 +1,209 @@
+{
+  "base_commit": "a1b455006d489dd7275aff47fcbe2b498aae139d",
+  "base_tree": "82f3d2e4b54edf0aed3a304ecfd6680d2ea9aad0",
+  "branch": "codex/authoritative-persistence-design",
+  "ci_note": "Existing workflow filters prototype/** and its own path; this docs-only design/probe change is not expected to trigger that workflow. Local commands were executed explicitly.",
+  "classification": {
+    "established_sources": "SQLite transaction/WAL/backup behavior and event-sourcing tradeoffs; not Living Universe production proofs",
+    "estimated": "2 KiB current actor payload, illustrative history rates/overheads and proposed byte/cache budgets",
+    "hypothetical": "Normalized authority, complete effect capture, bounded repositories, arbitrary historical reconstruction, 100k/1m capacity and deployment durability",
+    "measured": "Raw and zlib6 snapshot bytes and single-run local encode/compression timings at 100 and 1000 synthetic agents",
+    "tested": "Temporary small-fixture complete-snapshot transactions, process exits, receipt checks, read isolation, independent backup child, integrity checks and continuation"
+  },
+  "foundation_suite": {
+    "command": "{python} -m unittest discover -s tests -v",
+    "cwd": "prototype",
+    "runtimes": [
+      {
+        "command": "python3",
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests_run": 74
+      },
+      {
+        "command": "python3.13",
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests_run": 74
+      }
+    ]
+  },
+  "golden_digest_unchanged": "dd4d13c358216e612383655f5aee38e3acc40d94172e9a08e0990ce5baba5193",
+  "not_executed": [
+    "Physical power cuts/device failure",
+    "Production normalized adapter or full migration",
+    "Cross-language replay",
+    "Large-population capacity benchmark",
+    "Future phase-1 through phase-6 acceptance modules"
+  ],
+  "primary_sources": [
+    {
+      "bytes": 42143,
+      "name": "wal",
+      "sha256": "f3467b530b883d4a00574fe1a898b3d121ed72764ae28cf66941080ac0badb9e",
+      "title": "Write-Ahead Logging",
+      "url": "https://www.sqlite.org/wal.html"
+    },
+    {
+      "bytes": 17364,
+      "name": "isolation",
+      "sha256": "23395653f04984e4310b287ed548202d874e06ecd2cba17f32b2714e5b7ebef7",
+      "title": "Isolation In SQLite",
+      "url": "https://www.sqlite.org/isolation.html"
+    },
+    {
+      "bytes": 27068,
+      "name": "transactions",
+      "sha256": "b65dc308fd9e0ce471844c97366a4f5ad3a1f42833a3b19486ad7d6555a8e24e",
+      "title": "Transaction",
+      "url": "https://www.sqlite.org/lang_transaction.html"
+    },
+    {
+      "bytes": 28195,
+      "name": "backup",
+      "sha256": "306b6cca5c7c2f93b648040ae139f14d7d3221c0d16d79b5749e69d808382e04",
+      "title": "SQLite Backup API",
+      "url": "https://www.sqlite.org/backup.html"
+    },
+    {
+      "bytes": 139936,
+      "name": "pragmas",
+      "sha256": "af75d7d7ab00c29e6eea98618cb1259a3919c308af60a6173215bf9798706034",
+      "title": "Pragma statements supported by SQLite",
+      "url": "https://www.sqlite.org/pragma.html"
+    },
+    {
+      "bytes": 21741,
+      "name": "limits",
+      "sha256": "0cdbd54a89169177c50efd15854e5c1e0df6fe1a0e0706234e034dd923e0503b",
+      "title": "Implementation Limits For SQLite",
+      "url": "https://www.sqlite.org/limits.html"
+    },
+    {
+      "bytes": 79808,
+      "name": "event-sourcing",
+      "sha256": "7ff5e84b9a808739e07d213845ad672688f4881ed1dcb98a692a7b936c959b71",
+      "title": "Event Sourcing Pattern - Azure Architecture Center | Microsoft Learn",
+      "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing"
+    },
+    {
+      "bytes": 77968,
+      "name": "atomic-commit",
+      "sha256": "5a5be7b660217c9408c8a81eaf2faa2d08832ed3790f895a0a713916ad856ea1",
+      "title": "Atomic Commit In SQLite",
+      "url": "https://www.sqlite.org/atomiccommit.html"
+    }
+  ],
+  "probe_command": "{python} docs/architecture/experiments/sqlite_authority_probe.py",
+  "probe_results": [
+    {
+      "compression": [
+        {
+          "agents": 100,
+          "compress_seconds": 0.003191,
+          "days": 50,
+          "decompress_seconds": 0.000342,
+          "encode_seconds": 0.007292,
+          "history_events": 2000,
+          "lossless_roundtrip": true,
+          "raw_bytes": 197805,
+          "zlib6_bytes": 26354
+        },
+        {
+          "agents": 1000,
+          "compress_seconds": 0.02463,
+          "days": 50,
+          "decompress_seconds": 0.003444,
+          "encode_seconds": 0.114189,
+          "history_events": 20000,
+          "lossless_roundtrip": true,
+          "raw_bytes": 1993873,
+          "zlib6_bytes": 217819
+        }
+      ],
+      "errors": 0,
+      "failures": 0,
+      "not_proven": [
+        "production row-delta capture",
+        "complete causal replay",
+        "power-loss durability",
+        "large-population throughput",
+        "bounded process memory",
+        "production migration"
+      ],
+      "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+      "python": "3.12.14",
+      "sqlite": "3.53.1",
+      "status": "isolated design probe; not production persistence",
+      "tests_run": 8,
+      "zlib": "1.3.2"
+    },
+    {
+      "compression": [
+        {
+          "agents": 100,
+          "compress_seconds": 0.003827,
+          "days": 50,
+          "decompress_seconds": 0.000566,
+          "encode_seconds": 0.011535,
+          "history_events": 2000,
+          "lossless_roundtrip": true,
+          "raw_bytes": 197805,
+          "zlib6_bytes": 26354
+        },
+        {
+          "agents": 1000,
+          "compress_seconds": 0.029952,
+          "days": 50,
+          "decompress_seconds": 0.00381,
+          "encode_seconds": 0.105765,
+          "history_events": 20000,
+          "lossless_roundtrip": true,
+          "raw_bytes": 1993873,
+          "zlib6_bytes": 217819
+        }
+      ],
+      "errors": 0,
+      "failures": 0,
+      "not_proven": [
+        "production row-delta capture",
+        "complete causal replay",
+        "power-loss durability",
+        "large-population throughput",
+        "bounded process memory",
+        "production migration"
+      ],
+      "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+      "python": "3.13.5",
+      "sqlite": "3.46.1",
+      "status": "isolated design probe; not production persistence",
+      "tests_run": 8,
+      "zlib": "1.3.1"
+    }
+  ],
+  "probe_script_sha256": "b2874373635f2cab3991c00585584db011ae660f6d006e823412582a74e51f95",
+  "recorded_date": "2026-11-05",
+  "status": "Proposed architecture; not implemented",
+  "verified_pull_requests": [
+    {
+      "base": "2872624c1a5b109b311704d7db4d1a1ffae7f98c",
+      "head": "a1b455006d489dd7275aff47fcbe2b498aae139d",
+      "merged": false,
+      "pr": 1
+    },
+    {
+      "base": "a1b455006d489dd7275aff47fcbe2b498aae139d",
+      "head": "4a52afedcb00693777cd3bb4fa2e1d9574e34b1e",
+      "merged": false,
+      "pr": 3
+    },
+    {
+      "base": "a1b455006d489dd7275aff47fcbe2b498aae139d",
+      "head": "523e7e1bcbf8854132ae60b44307475069291cb4",
+      "merged": false,
+      "pr": 4
+    }
+  ]
+}
