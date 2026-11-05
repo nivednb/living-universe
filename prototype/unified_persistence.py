@@ -11,6 +11,9 @@ from history import Claim, Event
 from unified_kernel import UnifiedKernel, Pending
 from world_state import KnowledgeClaim, Settlement
 import heapq
+import tempfile
+from invariants import validate
+from checkpoint_schema import validate_shape
 
 VERSION = 1
 
@@ -18,6 +21,7 @@ def _tuple(value):
     return tuple(_tuple(x) for x in value) if isinstance(value, list) else value
 
 def encode(world):
+    validate(world)
     state = {
         "version": VERSION, "rules_version": world.RULES_VERSION, "seed": world.seed, "day": world.day,
         "sequence": world.sequence, "rng": world.rng.getstate(),
@@ -43,6 +47,15 @@ def encode(world):
     return json.loads(json.dumps(state, sort_keys=True))
 
 def decode(s):
+    """Reject malformed data before reconstruction; never migrate rules implicitly."""
+    try:
+        validate_shape(s)
+        return _decode(s)
+    except (KeyError, TypeError, IndexError, AttributeError, OverflowError) as exc:
+        raise ValueError("Malformed unified checkpoint") from exc
+
+
+def _decode(s):
     if s.get("version") != VERSION:
         raise ValueError("Unsupported unified checkpoint version")
     if s.get("rules_version") != UnifiedKernel.RULES_VERSION:
@@ -72,6 +85,7 @@ def decode(s):
     world.destinations = {int(k):v for k,v in s["destinations"].items()}
     world.pending = [(d,n,Pending(d,n,kind,actor,target)) for d,n,kind,actor,target in s["pending"]]
     heapq.heapify(world.pending)
+    world._pending_research = {e.actor for _, _, e in world.pending if e.kind == "research"}
     for eid,year,description,witnesses in s["events"]:
         world.history.record(Event(eid,year,description,frozenset(witnesses)))
     world.history.claims = {c[0]:Claim(*c) for c in s["claims"]}
@@ -79,52 +93,41 @@ def decode(s):
     world.state.knowledge = {c[0]:KnowledgeClaim(c[0],c[1],c[2],tuple(c[3])) for c in s["world_claims"]}
     world.state.beliefs = {int(k):set(v) for k,v in s["beliefs"].items()}
     world.outcomes = [tuple(x) for x in s["outcomes"]]
-    ids = set(world.travelers)
-    if ids != set(world.discovery.researchers) or ids != set(world.destiny):
-        raise ValueError("Inconsistent character registries")
-    if set(world.locations) & world.transit or set(world.destinations) != world.transit:
-        raise ValueError("Inconsistent transit state")
-    if set(world.locations) | world.transit != ids:
-        raise ValueError("Missing character location")
-    if any(place not in world.state.settlements for place in world.locations.values()):
-        raise ValueError("Unknown settlement location")
-    for sid,place in world.state.settlements.items():
-        expected = {aid for aid,location in world.locations.items() if location == sid}
-        if place.residents != expected:
-            raise ValueError("Inconsistent settlement residents")
-    if any(d != e.day or n != e.sequence or e.actor not in ids or e.day < world.day or e.kind not in ("arrival", "research") for d,n,e in world.pending):
-        raise ValueError("Invalid pending event")
-    if len({n for _,n,_ in world.pending}) != len(world.pending):
-        raise ValueError("Duplicate event sequence")
-    if world.pending and world.sequence <= max(n for _,n,_ in world.pending):
-        raise ValueError("Invalid event sequence")
-    arrivals = {e.actor: e.target for _,_,e in world.pending if e.kind == "arrival"}
-    if arrivals != world.destinations:
-        raise ValueError("Inconsistent pending arrivals")
-    if any(world.state.settlements[place].region != world.travelers[aid].region for aid,place in world.locations.items()):
-        raise ValueError("Character region does not match residence")
-    if any(e.kind == "research" and e.target not in world.discovery.techniques for _,_,e in world.pending):
-        raise ValueError("Pending research references unknown technique")
-    research_actors = [e.actor for _,_,e in world.pending if e.kind == "research"]
-    if len(research_actors) != len(set(research_actors)):
-        raise ValueError("Multiple pending research jobs for character")
-    if any(d.researcher_id not in ids or d.technique_id not in world.discovery.techniques for d in world.discovery.discoveries):
-        raise ValueError("Invalid discovery provenance")
+    validate(world)
     return world
 
 def save(world, path):
     destination = Path(path)
-    temporary = destination.with_name(destination.name + ".tmp")
+    # Unique sibling files avoid collisions between independent save attempts.
+    # The caller must serialize mutation of the live kernel while saving.
+    state = encode(world)
+    temporary = None
     try:
-        with temporary.open("w", encoding="utf-8") as f:
-            json.dump(encode(world),f,sort_keys=True,separators=(",",":"))
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=destination.parent,
+                                         prefix=destination.name + ".", suffix=".tmp", delete=False) as f:
+            temporary = Path(f.name)
+            json.dump(state, f, sort_keys=True, separators=(",", ":"), allow_nan=False)
             f.flush()
             os.fsync(f.fileno())
         temporary.replace(destination)
     finally:
-        if temporary.exists():
-            temporary.unlink()
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def _object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate JSON object key: " + key)
+        result[key] = value
+    return result
+
+
+def _constant(value):
+    raise ValueError("Non-finite JSON number: " + value)
+
 
 def load(path):
     with Path(path).open(encoding="utf-8") as f:
-        return decode(json.load(f))
+        return decode(json.load(f, object_pairs_hook=_object, parse_constant=_constant))
