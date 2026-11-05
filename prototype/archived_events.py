@@ -31,5 +31,5 @@ class ArchivedEvents(Mapping):
         _, day, kind, actor, payload = record
         if kind != "historical_event" or actor is not None:
             raise HistoryIntegrityError("unexpected archive record")
-        return Event(event_id, day, payload["description"],
+        return Event(event_id, payload.get("year", day), payload["description"],
                      frozenset(payload["witnesses"]))
