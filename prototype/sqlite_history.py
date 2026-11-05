@@ -51,24 +51,43 @@ class SQLiteHistoryLedger:
         """)
         self._index_verified = False
 
-    def rebuild_event_id_index(self):
-        """Verify and index historical rows from pre-index SQLite archives.
+    def rebuild_event_id_index(self, batch_size=256):
+        """Rebuild ID mappings with bounded Python memory and atomic rollback.
 
-        Explicit migration: never silently trust a partially populated index.
+        Every source event is digest-verified while streaming. Duplicate IDs
+        fail the SQLite PRIMARY KEY constraint and roll back the entire rebuild.
+        This is an explicit migration, never an automatic repair.
         """
-        expected = []
-        for sequence, _, kind, _, payload in self.iter_events():
-            if kind == "historical_event":
+        if type(batch_size) is not int or batch_size < 1:
+            raise ValueError("batch_size must be positive")
+        self._index_verified = False
+        count = 0
+        with self.db:
+            self.db.execute("DELETE FROM event_ids")
+            batch = []
+            for sequence, _, kind, _, payload in self.iter_events(batch_size=batch_size):
+                if kind != "historical_event":
+                    continue
                 event_id = payload.get("id") if isinstance(payload, dict) else None
                 if not isinstance(event_id, str) or not event_id:
                     raise HistoryIntegrityError("invalid historical event ID")
-                expected.append((event_id, sequence))
-        with self.db:
-            self.db.execute("DELETE FROM event_ids")
-            self.db.executemany("INSERT INTO event_ids(event_id,sequence) VALUES(?,?)", expected)
-        self.check_event_id_index()
+                batch.append((event_id, sequence))
+                if len(batch) == batch_size:
+                    self.db.executemany(
+                        "INSERT INTO event_ids(event_id,sequence) VALUES(?,?)", batch
+                    )
+                    count += len(batch)
+                    batch.clear()
+            if batch:
+                self.db.executemany(
+                    "INSERT INTO event_ids(event_id,sequence) VALUES(?,?)", batch
+                )
+                count += len(batch)
+            # Audit before committing, so any mismatch rolls back the rebuild.
+            if self.check_event_id_index() != count:
+                raise HistoryIntegrityError("historical ID index count mismatch")
         self._index_verified = True
-        return len(expected)
+        return count
 
     def close(self):
         self.db.close()
