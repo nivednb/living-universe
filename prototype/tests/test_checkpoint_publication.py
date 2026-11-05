@@ -89,6 +89,19 @@ class PublicationTests(unittest.TestCase):
                 self.assertEqual(recover_checkpoint(ledger, checkpoint).snapshot(), world.snapshot())
                 self.assertFalse(candidate.exists())
 
+    def test_unrecorded_candidate_blocks_publication(self):
+        world = make_world()
+        with tempfile.TemporaryDirectory() as folder:
+            checkpoint = Path(folder) / "world.json"
+            candidate = checkpoint.with_name(checkpoint.name + ".pending")
+            candidate.write_bytes(b"interrupted before SQLite intent")
+            with SQLiteHistoryLedger(Path(folder) / "events.sqlite") as ledger:
+                export_history(world, ledger)
+                with self.assertRaises(HistoryIntegrityError):
+                    publish_checkpoint(world, ledger, checkpoint)
+                self.assertEqual(candidate.read_bytes(), b"interrupted before SQLite intent")
+                self.assertFalse(checkpoint.exists())
+
     def test_reject_tampered_candidate(self):
         world = make_world()
         with tempfile.TemporaryDirectory() as folder:
