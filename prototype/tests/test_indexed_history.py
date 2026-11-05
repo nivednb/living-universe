@@ -23,6 +23,22 @@ class IndexedHistoryTests(unittest.TestCase):
             with SQLiteHistoryLedger(path) as ledger:
                 self.assertEqual(ledger.get_event_by_id("e-70")[4]["id"], "e-70")
 
+    def test_wrong_index_mapping_detected_even_when_counts_match(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with SQLiteHistoryLedger(Path(directory) / "history.sqlite") as ledger:
+                ledger.append_many([
+                    (0, 0, "historical_event", None,
+                     {"id": "a", "description": "first", "witnesses": []}),
+                    (1, 1, "historical_event", None,
+                     {"id": "b", "description": "second", "witnesses": []}),
+                ])
+                ledger.db.execute("UPDATE event_ids SET sequence=9 WHERE event_id='a'")
+                ledger.db.commit()
+                with self.assertRaises(HistoryIntegrityError):
+                    ledger.get_event_by_id("a")
+                self.assertEqual(ledger.rebuild_event_id_index(), 2)
+                self.assertEqual(ledger.get_event_by_id("a")[0], 0)
+
     def test_explicit_legacy_index_rebuild(self):
         with tempfile.TemporaryDirectory() as directory:
             with SQLiteHistoryLedger(Path(directory) / "history.sqlite") as ledger:
