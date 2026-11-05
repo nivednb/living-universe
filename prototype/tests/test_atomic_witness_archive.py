@@ -29,6 +29,22 @@ class AtomicWitnessArchiveTests(unittest.TestCase):
                 self.assertEqual(ledger.cursor(), (0, 1))
                 self.assertEqual(verify_witness_memory(ledger), 1)
 
+    def test_witness_insert_failure_rolls_back_event_and_index(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
+                record = (0, 0, "historical_event", None,
+                          {"id": "rollback", "year": 0,
+                           "description": "Test", "witnesses": [1]})
+                with self.assertRaises(Exception):
+                    ledger.append_many([record], witness_rows=[
+                        ("rollback", 1), ("rollback", 1)
+                    ])
+                self.assertEqual(ledger.cursor(), (None, 0))
+                self.assertIsNone(ledger.get_event_by_id("rollback"))
+                self.assertEqual(ledger.db.execute(
+                    "SELECT COUNT(*) FROM event_witness_memory"
+                ).fetchone()[0], 0)
+
     def test_missing_witness_row_detected(self):
         with tempfile.TemporaryDirectory() as folder:
             with SQLiteHistoryLedger(Path(folder) / "history.sqlite") as ledger:
