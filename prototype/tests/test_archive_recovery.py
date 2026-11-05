@@ -20,6 +20,7 @@ class ArchiveRecoveryTests(unittest.TestCase):
                 export_history(world, ledger)
                 self.assertEqual(load_verified_checkpoint(checkpoint, ledger).snapshot(), world.snapshot())
                 self.assertEqual(check_checkpoint_cursor(checkpoint, ledger)[1], len(world.history.events))
+                self.assertEqual(check_checkpoint_cursor(checkpoint, ledger, audit_knowledge=True)[1], len(world.history.events))
 
     def test_archive_ahead_of_checkpoint_rejected(self):
         world = make_world()
