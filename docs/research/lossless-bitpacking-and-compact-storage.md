@@ -40,3 +40,22 @@ Use the same canonical deterministic workload and exact snapshot as baseline. Co
 4. Revisit packed layouts when entity access patterns, hot/cold splits, and historical observation workloads are known.
 
 **Decision:** investigate sub-byte encodings seriously, but do not impose 2/4/6-bit widths globally or treat this research as authorization to change authoritative persistence.
+
+
+## Verified external implementations (source review, November 2026)
+
+These are **implemented mechanisms in other software**, not benchmark results for Living Universe.
+
+1. **SQLite record format**: SQLite documents serial-type encodings with integer payload widths of 1, 2, 3, 4, 6 or 8 bytes; integer 0 and 1 may take zero body bytes. This already avoids fixed 64-bit payloads for many small numbers, though rows, pages, headers and indexes have additional overhead. Source: https://www.sqlite.org/fileformat2.html
+2. **Apache Parquet**: its maintained format specification includes a hybrid run-length/bit-packing encoding, bit-packed booleans, dictionary-coded values, delta binary packing and delta byte arrays. Dictionary indices use an explicit bit width; the specification's example of 30 two-bit values occupies 60 data bits, rounded to 8 bytes, excluding framing. Its standalone older BIT_PACKED encoding is deprecated in favor of the RLE hybrid. This directly verifies practical sub-byte packing. Source: https://parquet.apache.org/docs/file-format/data-pages/encodings/ ; implementation matrix: https://parquet.apache.org/docs/file-format/implementationstatus/
+3. **Zstandard**: the reference implementation provides lossless compression and dictionary training. Its published Silesia benchmark (i7-9700K) reports zstd 1.5.7 level 1 at 2.896x, 510 MB/s compression and 1550 MB/s decompression, versus zlib 1.3.1 level 1 at 2.743x, 105 MB/s and 390 MB/s on that corpus. These figures are hardware/corpus-specific and not transferable to our event stream. Source: https://github.com/facebook/zstd
+
+### Consequences for Living Universe
+
+**Verified feasible:** 1–6-bit categorical packing, mixed RLE/bit-packed streams, delta and dictionary encoding, variable-width small integers, and lossless compressed history blocks are established production techniques. We need not invent these algorithms.
+
+**Not yet verified for this workload:** whether packed BLOBs beat normalized SQLite columns on total file/WAL/index size and update cost; whether Zstandard beats zlib on our event/knowledge distribution after dictionary overhead; whether random historical reads remain fast; whether an integrated layout keeps exact provenance, versioning and crash recovery.
+
+**Selection guidance:** retain SQLite as transactional authority; first try its native compact encodings. For dense cold categorical columns, prototype the Parquet-style RLE/bit-packing technique in an independently versioned payload, without requiring Parquet as the live database. Compare zlib and zstd on bounded independently decompressible blocks. Do not add Parquet/RocksDB as additional authoritative stores merely for compression. Never interpret an external benchmark as an achieved Living Universe saving.
+
+**Follow-up experimental gate:** record field cardinalities and frequency distributions on real/synthetic world snapshots; compare SQLite native schema vs packed BLOB vs dictionary/RLE on identical events, claims, witness grants and updates, including WAL/checkpoint costs. Require exact round-trip and corruption tests before adoption.
